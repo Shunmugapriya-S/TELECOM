@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # Main RAG Engine Service
+  rag-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-engine
+    environment:
+      - PYTHONUNBUFFERED=1
+      - HF_TOKEN=${HF_TOKEN:-}
+      - ENVIRONMENT=development
+    volumes:
+      - .:/app
+      - ./models:/app/models
+      - ./vector_db:/app/vector_db
+    ports:
+      - "8000:8000"
+    depends_on:
+      - vector-db
+      - redis
+    networks:
+      - rag-network
+    command: python -m rag_engine.main_rag_testing
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Vector Database Service (Chroma)
+  vector-db:
+    image: ghcr.io/chroma-core/chroma:latest
+    container_name: rag-vector-db
+    environment:
+      - CHROMA_DB_IMPL=duckdb+parquet
+      - CHROMA_QUERY_SERVICE_IMPL=default
+    volumes:
+      - ./chroma_data:/chroma/data
+    ports:
+      - "8001:8000"
+    networks:
+      - rag-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache Service
+  redis:
+    image: redis:7-alpine
+    container_name: rag-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis_data:/data
+    networks:
+      - rag-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: PostgreSQL for metadata storage
+  postgres:
+    image: postgres:15-alpine
+    container_name: rag-postgres
+    environment:
+      - POSTGRES_USER=raguser
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ragpass}
+      - POSTGRES_DB=rag_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    networks:
+      - rag-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raguser"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: Monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rag-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - rag-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+networks:
+  rag-network:
+    driver: bridge
+
+volumes:
+  chroma_data:
+  redis_data:
+  postgres_data:
+  prometheus_data:

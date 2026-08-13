@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# CI/CD
+.github/workflows
+.gitlab-ci.yml
+Jenkinsfile
+azure-pipelines.yml
+
+# Documentation
+docs/_build
+README.md
+CONTRIBUTING.md
+
+# Testing
+tests/
+pytest.ini
+.coveragerc
+
+# Other
+.env
+.env.local
+*.md
+LICENSE
